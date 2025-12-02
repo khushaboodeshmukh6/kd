@@ -1,0 +1,420 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opening Creatoo Restaurant...</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #9759C4 0%, #E1BEE7 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 40px 30px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(151, 89, 196, 0.3);
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .logo {
+            font-size: 80px;
+            margin-bottom: 24px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        h1 {
+            color: #9759C4;
+            font-size: 32px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        
+        p {
+            color: #9C9C9C;
+            font-size: 16px;
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+        
+        .fallback-btn {
+            display: inline-block;
+            background: #9759C4;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(151, 89, 196, 0.3);
+            border: none;
+            cursor: pointer;
+        }
+        
+        .fallback-btn:hover {
+            background: #7D4AA3;
+            transform: translateY(-2px);
+        }
+        
+        .dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 24px;
+        }
+        
+        .dot {
+            width: 12px;
+            height: 12px;
+            background: #9759C4;
+            border-radius: 50%;
+            animation: bounce 1.4s ease-in-out infinite;
+        }
+        
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1.2); opacity: 1; }
+        }
+        
+        #status {
+            color: #9759C4;
+            font-weight: 500;
+            margin-top: 20px;
+            font-size: 15px;
+            min-height: 20px;
+        }
+        
+        .debug {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+            text-align: left;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .success {
+            background: #efe;
+            color: #3a3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🍽️</div>
+        <h1>Opening Creatoo</h1>
+        <p id="message">Please wait a moment</p>
+        <p id="restaurant-name" style="font-weight: 600; color: #9759C4;"></p>
+        
+        <div class="dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        
+        <p id="status"></p>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="success" class="success" style="display: none;"></div>
+
+        <button id="fallbackBtn" class="fallback-btn" style="display: none;">
+            Open Play Store
+        </button>
+        
+        <div class="debug" id="debug"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const PACKAGE_NAME = 'com.creatoo.app';
+        const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PACKAGE_NAME}`;
+        
+        // Restaurant names mapping
+        const RESTAURANT_NAMES = {
+            '167': 'Goldfarms',
+            '184': 'FATOUSH',
+            '476': 'Sarovarr Multicuisine Restaurant'
+        };
+
+        // Extract business ID from URL
+        function extractBusinessId() {
+            const url = window.location.href;
+            const pathname = window.location.pathname;
+            const search = window.location.search;
+            const hash = window.location.hash;
+
+            console.log('🔍 Extracting business ID from:', {
+                url,
+                pathname,
+                search,
+                hash
+            });
+
+            let businessId = null;
+
+            // Format 1: /restaurant/167 or /restaurant/167/
+            const restaurantMatch = pathname.match(/\/restaurant\/(\d+)/);
+            if (restaurantMatch && restaurantMatch[1]) {
+                businessId = restaurantMatch[1];
+                console.log('✅ Found in /restaurant/ path:', businessId);
+                return businessId;
+            }
+
+            // Format 2: /r/167 or /r/167/
+            const shortMatch = pathname.match(/\/r\/(\d+)/);
+            if (shortMatch && shortMatch[1]) {
+                businessId = shortMatch[1];
+                console.log('✅ Found in /r/ path:', businessId);
+                return businessId;
+            }
+
+            // Format 3: ?business_id=167 or ?id=167
+            const params = new URLSearchParams(search);
+            if (params.has('business_id')) {
+                businessId = params.get('business_id');
+                console.log('✅ Found in query param business_id:', businessId);
+                return businessId;
+            }
+            if (params.has('id')) {
+                businessId = params.get('id');
+                console.log('✅ Found in query param id:', businessId);
+                return businessId;
+            }
+
+            // Format 4: #167
+            if (hash && hash.length > 1) {
+                const hashValue = hash.substring(1);
+                if (/^\d+$/.test(hashValue)) {
+                    businessId = hashValue;
+                    console.log('✅ Found in hash:', hashValue);
+                    return hashValue;
+                }
+            }
+
+            // Format 5: Look for any number in path segments
+            const pathSegments = pathname.split('/').filter(s => s.length > 0);
+            for (const segment of pathSegments) {
+                if (/^\d+$/.test(segment)) {
+                    businessId = segment;
+                    console.log('✅ Found numeric segment in path:', businessId);
+                    return businessId;
+                }
+            }
+
+            // TESTING: Hardcode 167 as fallback for testing
+            console.log('⚠️ No business ID found - using TEST ID: 167');
+            return '167';
+        }
+
+        // Validate business ID
+        function validateBusinessId(id) {
+            if (!id) return false;
+            const numId = parseInt(id, 10);
+            return !isNaN(numId) && numId > 0;
+        }
+
+        // Detect platform
+        function getPlatform() {
+            const ua = navigator.userAgent;
+            if (/android/i.test(ua)) return 'android';
+            if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) return 'ios';
+            return 'desktop';
+        }
+
+        // Main execution
+        const businessId = extractBusinessId();
+        const isValid = validateBusinessId(businessId);
+        const platform = getPlatform();
+
+        console.log('📍 Business ID:', businessId);
+        console.log('✓ Valid:', isValid);
+        console.log('📱 Platform:', platform);
+
+        // Generate deep links
+        const standardDeepLink = isValid 
+            ? `creatoo://restaurant/${businessId}/payment`
+            : `creatoo://open`;
+
+        // UI Elements
+        const statusEl = document.getElementById('status');
+        const messageEl = document.getElementById('message');
+        const restaurantNameEl = document.getElementById('restaurant-name');
+        const fallbackBtn = document.getElementById('fallbackBtn');
+        const debugEl = document.getElementById('debug');
+        const errorEl = document.getElementById('error');
+        const successEl = document.getElementById('success');
+
+        // Show restaurant name
+        if (isValid) {
+            if (RESTAURANT_NAMES[businessId]) {
+                restaurantNameEl.textContent = RESTAURANT_NAMES[businessId];
+            } else {
+                restaurantNameEl.textContent = `Restaurant #${businessId}`;
+            }
+            successEl.textContent = `✅ Restaurant ID: ${businessId} found!`;
+            successEl.style.display = 'block';
+        } else {
+            errorEl.textContent = '⚠️ No restaurant ID found in URL. Using default (167).';
+            errorEl.style.display = 'block';
+        }
+
+        // Function to attempt app opening
+        function attemptAppOpen() {
+            if (!isValid) {
+                statusEl.textContent = '⚠️ Opening app...';
+            } else {
+                statusEl.textContent = '✨ Opening restaurant...';
+            }
+            
+            console.log('📱 Attempting to open app...');
+
+            if (platform === 'android') {
+                // Android Intent URI format - most reliable for Android
+                const intentUri = `intent://restaurant/${businessId}/payment#Intent;` +
+                                  `scheme=creatoo;` +
+                                  `package=${PACKAGE_NAME};` +
+                                  `S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};` +
+                                  `end;`;
+                
+                console.log('🤖 Using Android Intent URI:', intentUri);
+                
+                // Try Intent URI first (this is the most reliable)
+                window.location.href = intentUri;
+                
+                // Backup: Also try standard deep link after a delay
+                setTimeout(() => {
+                    console.log('🔄 Backup: Trying standard deep link');
+                    window.location.href = standardDeepLink;
+                }, 500);
+
+            } else if (platform === 'ios') {
+                // iOS: Use standard deep link with iframe trick
+                console.log('🍎 Using iOS deep link');
+                
+                // Create invisible iframe
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = standardDeepLink;
+                document.body.appendChild(iframe);
+                
+                // Also try direct navigation
+                setTimeout(() => {
+                    window.location.href = standardDeepLink;
+                }, 100);
+
+            } else {
+                // Desktop fallback
+                console.log('💻 Desktop detected - showing Play Store link');
+                showPlayStoreFallback();
+                return;
+            }
+
+            // Set timeout for Play Store fallback
+            setTimeout(() => {
+                showPlayStoreFallback();
+            }, 2500);
+        }
+
+        // Show Play Store fallback
+        function showPlayStoreFallback() {
+            statusEl.textContent = '📲 App not installed?';
+            messageEl.textContent = 'Redirecting to Play Store...';
+            
+            fallbackBtn.style.display = 'inline-block';
+            fallbackBtn.textContent = platform === 'desktop' ? 'View on Play Store' : 'Install App';
+            fallbackBtn.onclick = () => {
+                window.location.href = PLAY_STORE_URL;
+            };
+
+            // Auto redirect for mobile only
+            if (platform !== 'desktop') {
+                setTimeout(() => {
+                    console.log('🏪 Auto-redirecting to Play Store');
+                    window.location.href = PLAY_STORE_URL;
+                }, 1500);
+            }
+        }
+
+        // Debug info
+        debugEl.innerHTML = `
+            <strong>🔍 Debug Info:</strong><br>
+            Full URL: ${window.location.href}<br>
+            Pathname: ${window.location.pathname}<br>
+            Search: ${window.location.search}<br>
+            Hash: ${window.location.hash}<br>
+            <strong>Business ID: ${businessId || 'NOT FOUND'}</strong><br>
+            Valid: ${isValid ? '✅' : '❌'}<br>
+            Platform: ${platform}<br>
+            Deep Link: <strong>${standardDeepLink}</strong><br>
+            ${platform === 'android' ? `Intent URI: intent://restaurant/${businessId}/payment#Intent;scheme=creatoo;package=${PACKAGE_NAME};end<br>` : ''}
+            User Agent: ${navigator.userAgent.substring(0, 60)}...
+        `;
+
+        // Execute based on platform
+        if (platform === 'desktop') {
+            messageEl.textContent = 'Scan with your mobile device';
+            statusEl.textContent = '📱 This link works on phones';
+            document.querySelector('.dots').style.display = 'none';
+            showPlayStoreFallback();
+        } else {
+            // Mobile: attempt app open after small delay
+            setTimeout(attemptAppOpen, 300);
+        }
+
+        // Handle visibility change (detect if app opened)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('✅ App likely opened successfully!');
+                statusEl.textContent = '✅ Opening restaurant...';
+            }
+        });
+
+        // Handle page focus (alternative detection)
+        window.addEventListener('blur', () => {
+            console.log('✅ Page lost focus - app may have opened');
+        });
+    </script>
